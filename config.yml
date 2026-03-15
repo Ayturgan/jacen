@@ -1,0 +1,14 @@
+tunnel: quest
+credentials-file: C:\Users\aytur\.cloudflared\da312770-bc85-4eda-8668-36d7451da674.json
+
+ingress:
+  - hostname: api.luxes.studio
+    service: http://localhost:8000
+
+  - hostname: site.luxes.studio
+    service: http://localhost:3000
+
+  - hostname: bot.luxes.studio
+    service: http://localhost:5000
+
+  - service: http_status:404
