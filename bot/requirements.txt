@@ -1,0 +1,9 @@
+aiogram
+google-genai
+python-dotenv
+markdown
+aiofiles
+fastapi
+uvicorn
+aiosqlite
+gTTS

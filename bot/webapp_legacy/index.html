@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эхо Драконьей крови</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --glass-bg: rgba(20, 15, 25, 0.6);
+            --glass-border: rgba(201, 162, 39, 0.2);
+            --neon-glow: rgba(201, 162, 39, 0.4);
+            --accent-color: #dcb841; /* более яркое золото */
+            --accent-hover: #fce38a;
+            --text-color: #e0d5c1;
+            --mystery: #9d4edd;
+            --mystery-glow: rgba(157, 78, 221, 0.4);
+            --danger: #d90429;
+            --danger-glow: rgba(217, 4, 41, 0.4);
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(201, 162, 39, 0.05), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(157, 78, 221, 0.05), transparent 40%);
+            color: var(--text-color); 
+            font-family: 'Inter', sans-serif; 
+            padding: 20px; 
+            margin: 0; 
+            min-height: 100vh; 
+            overflow-x: hidden; 
+            transition: filter 0.5s ease-in-out; 
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png');
+            opacity: 0.2;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body.critical-hp { filter: grayscale(50%) contrast(110%) sepia(40%) hue-rotate(-50deg); }
+        body.high-stress { animation: pulse-stress 4s ease-in-out infinite alternate; }
+        @keyframes pulse-stress { 
+            0% { box-shadow: inset 0 0 0px 0px rgba(74, 0, 0, 0); } 
+            100% { box-shadow: inset 0 0 100px 10px rgba(120, 0, 20, 0.3); } 
+        }
+
+        .card { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 20px; 
+            padding: 24px; 
+            margin-bottom: 24px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 1px 10px rgba(255,255,255,0.03); 
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: inherit;
+            box-shadow: inset 0 0 20px rgba(201, 162, 39, 0.02);
+            pointer-events: none;
+        }
+
+        details summary { outline: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+        details summary::-webkit-details-marker { display: none; }
+        details summary::after { 
+            content: '▼'; 
+            font-size: 0.9rem; 
+            color: var(--accent-color); 
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            text-shadow: 0 0 10px var(--neon-glow);
+        }
+        details[open] summary::after { transform: rotate(-180deg); color: var(--accent-hover); }
+        
+        details[open] summary ~ * { animation: fadeInScale 0.4s ease forwards; }
+        @keyframes fadeInScale { 
+            0% { opacity: 0; transform: translateY(-10px) scale(0.98); } 
+            100% { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+
+        h2, h3 { 
+            font-family: 'Cinzel', serif; 
+            color: var(--accent-color); 
+            margin: 0; 
+            font-weight: 700;
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            text-shadow: 0 0 15px var(--neon-glow);
+        }
+        
+        .avatar-wrap {
+            position: relative;
+            width: 86px; height: 86px;
+            flex-shrink: 0; /* Prevents squishing into an oval */
+            margin-bottom: 15px;
+            border-radius: 50%;
+            padding: 3px;
+            background: linear-gradient(135deg, var(--accent-color), transparent 60%, var(--mystery));
+            box-shadow: 0 0 20px rgba(201, 162, 39, 0.4);
+            animation: breathe 4s infinite alternate ease-in-out;
+            overflow: hidden;
+        }
+        @keyframes breathe {
+            0% { box-shadow: 0 0 15px rgba(201, 162, 39, 0.3); }
+            100% { box-shadow: 0 0 30px rgba(201, 162, 39, 0.6); }
+        }
+
+        .avatar { 
+            width: 100%; height: 100%; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            cursor: pointer; 
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            background: #111;
+        }
+        .avatar:active { transform: scale(0.9); }
+        .header-flex { display: flex; align-items: center; gap: 20px; }
+
+        #image-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1000; display: none; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.4s; cursor: pointer; }
+        #image-modal img { max-width: 90%; max-height: 90%; border-radius: 16px; border: 1px solid var(--accent-color); box-shadow: 0 0 50px rgba(201, 162, 39, 0.6); transform: scale(0.8) translateY(20px); transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #image-modal.active { display: flex; opacity: 1; }
+        #image-modal.active img { transform: scale(1) translateY(0); }
+
+        .stat-label { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: #a0a0a0; font-family: 'Cinzel', serif; margin-top: 15px; display: block;}
+        .stat-bar-container { width: 100%; background: rgba(0,0,0,0.6); height: 12px; border-radius: 6px; margin: 8px 0 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); position: relative; }
+        
+        .stat-bar { height: 100%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;}
+        .stat-bar::after {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1) 50%, transparent);
+            animation: shine 2s infinite linear;
+        }
+        @keyframes shine { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        
+        .hp-bar { background: linear-gradient(90deg, #6a040f, #d00000); box-shadow: 0 0 15px rgba(208,0,0,0.5); }
+        .stress-bar { background: linear-gradient(90deg, #3c096c, #9d4edd); box-shadow: 0 0 15px rgba(157,78,221,0.5); }
+        
+        button { 
+            background: rgba(20, 15, 25, 0.8); 
+            color: var(--accent-color); 
+            border: 1px solid var(--glass-border); 
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            width: 100%; 
+            margin-top: 12px; 
+            transition: all 0.3s ease; 
+            font-size: 0.85rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            font-family: 'Cinzel', serif;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+        }
+        button:hover {
+            background: rgba(201, 162, 39, 0.1);
+            border-color: var(--accent-hover);
+            color: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(201,162,39,0.3);
+        }
+        button:active { 
+            transform: translateY(1px); 
+            background: rgba(201, 162, 39, 0.2); 
+            box-shadow: 0 2px 10px rgba(201,162,39,0.4);
+        }
+        
+        .btn-action { border-color: var(--neon-glow); text-shadow: 0 0 8px rgba(201,162,39,0.5); }
+        .btn-danger { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
+        .btn-danger:hover { background: rgba(217, 4, 41, 0.15); border-color: #ff6b6b; color: #fff; box-shadow: 0 6px 20px rgba(217,4,41,0.4); }
+        .btn-mystic { color: #d0bfff; border-color: rgba(157,78,221,0.3); }
+        .btn-mystic:hover { background: rgba(157,78,221,0.15); border-color: #d0bfff; color: #fff; box-shadow: 0 6px 20px rgba(157,78,221,0.4); }
+
+        input, select, textarea { 
+            background: rgba(0,0,0,0.4); 
+            color: #fff; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            padding: 12px; 
+            border-radius: 8px; 
+            margin: 6px 0; 
+            width: calc(100% - 24px); 
+            font-family: 'Inter', sans-serif; 
+            transition: all 0.3s;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(201,162,39,0.2), inset 0 2px 5px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
+        }
+        
+        .item-tag { display: inline-flex; align-items: center; background: rgba(201,162,39,0.08); color: var(--accent-hover); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; margin: 4px; border: 1px solid rgba(201,162,39,0.4); box-shadow: 0 2px 10px rgba(0,0,0,0.2); backdrop-filter: blur(4px); transition: 0.3s; }
+        .item-tag:hover { background: rgba(201,162,39,0.15); border-color: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(201,162,39,0.3); cursor: pointer; }
+        
+        .knowledge-block { background: rgba(0,0,0,0.5); padding: 16px; border-left: 4px solid var(--accent-color); margin-bottom: 12px; font-size: 0.9rem; border-radius: 0 8px 8px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.3); line-height: 1.5; position: relative; overflow: hidden; }
+        .knowledge-block::before { content:''; position:absolute; top:0;left:0; right:0; height:1px; background: linear-gradient(90deg, var(--accent-color), transparent); opacity: 0.5;}
+        
+        .tabs { display: flex; margin-bottom: 20px; gap: 8px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
+        .tab { flex: 1; text-align: center; padding: 12px; background: transparent; border-radius: 10px; cursor: pointer; color: #888; font-size: 0.85rem; text-transform: uppercase; font-family: 'Cinzel', serif; font-weight: bold; transition: all 0.4s; }
+        .tab.active { background: rgba(201,162,39,0.15); color: var(--accent-hover); text-shadow: 0 0 10px var(--neon-glow); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        
+        .tab-content { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from {opacity: 0; transform: translateY(5px);} to {opacity: 1; transform: translateY(0);} }
+
+        #dice-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,5,5,0.95); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 999; flex-direction: column;}
+        .dice-title { color: var(--accent-hover); font-family: 'Cinzel', serif; margin-bottom: 50px; text-transform: uppercase; letter-spacing: 4px; font-size: 1.5rem; text-shadow: 0 0 20px var(--neon-glow), 0 0 40px var(--neon-glow); animation: float 3s ease-in-out infinite alternate;}
+        @keyframes float { 0% {transform: translateY(0px);} 100% {transform: translateY(-10px);} }
+        
+        .d20-wrapper { position: relative; width: 150px; height: 150px; display: flex; justify-content: center; align-items: center; filter: drop-shadow(0 0 15px rgba(201,162,39,0.3)); transition: all 0.5s ease; }
+        .d20-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; transition: transform 0.5s; }
+        .d20-svg polygon, .d20-svg line { transition: all 0.3s; stroke: var(--accent-color); stroke-width: 2.5; fill: rgba(20, 15, 25, 0.8); }
+        .d20-svg .glass-face { fill: rgba(201, 162, 39, 0.15); backdrop-filter: blur(5px); }
+
+        .d20-wrapper.rolling .d20-spinner { animation: spin-d20 1s infinite linear; }
+        .d20-wrapper.rolling { animation: bounce-d20 1.2s infinite cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .d20-wrapper.rolling .d20-svg { filter: drop-shadow(0 0 30px var(--accent-hover)); }
+        
+        .d20-spinner { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+
+        @keyframes bounce-d20 {
+            0% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.3) translateY(-30px); filter: drop-shadow(0 0 50px var(--accent-hover)); }
+            100% { transform: scale(1) translateY(0); }
+        }
+        
+        @keyframes spin-d20 {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(720deg); }
+        }
+        
+        @keyframes pulse-d20 {
+            0% { transform: scale(0.9); filter: drop-shadow(0 0 10px rgba(201,162,39,0.5)); }
+            100% { transform: scale(1.1); filter: drop-shadow(0 0 25px rgba(201,162,39,1)); }
+        }
+        
+        .d20-wrapper.loading { animation: pulse-d20 2s infinite alternate ease-in-out; }
+
+        .d20-number { position: absolute; z-index: 10; font-size: 48px; font-weight: bold; font-family: 'Cinzel', serif; color: var(--text-color); text-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px var(--neon-glow); transition: all 0.3s; }
+        
+        #dice-result-text { margin-top: 50px; font-size: 28px; font-family: 'Cinzel', serif; color: var(--accent-hover); font-weight: bold; text-shadow: 0 0 20px var(--neon-glow); opacity: 0; transform: scale(0.5); transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-align: center; }
+        #dice-result-text.show { opacity: 1; transform: scale(1); }
+
+        .admin-section-title { margin: 25px 0 15px; display: flex; align-items: center; gap: 10px; font-size: 1.1rem; }
+        .admin-section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--glass-border), transparent); }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(201,162,39,0.6); }
+
+        /* Intro Screen CSS */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #030303; z-index: 2000;
+            display: flex; justify-content: center; align-items: center;
+            padding: 0; margin: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        #intro-btn {
+            background-color: rgba(20, 15, 25, 0.5);
+            backdrop-filter: blur(10px);
+            color: #dcb841;
+            border: 1px solid rgba(220, 184, 65, 0.3);
+            border-radius: 2px;
+            padding: 15px 30px; 
+            font-size: 1.1rem;
+            text-transform: uppercase; 
+            font-family: 'Cinzel', serif; 
+            letter-spacing: 5px;
+            cursor: pointer;
+            transition: opacity 1s ease-out;
+            width: auto;
+            max-width: 85%;
+            margin: 0;
+            text-align: center;
+            box-sizing: border-box;
+            animation: breathe-btn 3s infinite alternate ease-in-out;
+            z-index: 10;
+        }
+        @keyframes breathe-btn {
+            0% { 
+                box-shadow: 0 0 15px rgba(220, 184, 65, 0.05), inset 0 0 10px rgba(220, 184, 65, 0.05); 
+                transform: scale(0.98); 
+                border-color: rgba(220, 184, 65, 0.2); 
+                text-shadow: 0 0 5px rgba(220, 184, 65, 0.3);
+            }
+            100% { 
+                box-shadow: 0 0 40px rgba(220, 184, 65, 0.4), inset 0 0 20px rgba(220, 184, 65, 0.2); 
+                transform: scale(1.02); 
+                border-color: rgba(220, 184, 65, 0.6); 
+                text-shadow: 0 0 15px rgba(220, 184, 65, 0.8);
+            }
+        }
+
+        .intro-text-line {
+            font-family: 'Cinzel', serif;
+            font-size: 1.3rem;
+            color: #dcb841;
+            text-shadow: 0 0 15px rgba(201,162,39,0.5);
+            text-align: center;
+            opacity: 0;
+            position: absolute;
+            max-width: 85%;
+            line-height: 1.5;
+            transition: opacity 2s cubic-bezier(0.4, 0, 0.2, 1), transform 3s ease-out;
+            transform: translateY(10px) scale(0.95);
+            pointer-events: none;
+        }
+        .intro-text-line.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        #intro-skip {
+            position: absolute; bottom: 30px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem; color: #666;
+            text-decoration: underline; cursor: pointer;
+            opacity: 0; transition: opacity 2s;
+        }
+        #intro-skip.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div id="intro-screen" style="display: none;">
+        <div style="position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0;">
+            <button id="intro-btn" onclick="startIntro()">Принять судьбу</button>
+            <div class="intro-text-line" id="il-1">Минуло сорок лет с тех пор, как стихли битвы за Железный Трон...</div>
+            <div class="intro-text-line" id="il-2">Драконы исчезли. Но их эхо вновь пробуждается в песках Эссоса.</div>
+            <div class="intro-text-line" id="il-3">Тайные ордены ведут незримую войну, пытаясь подчинить себе древние пророчества...</div>
+            <div class="intro-text-line" id="il-4">Магия возвращается, но не как благословение...<br>А как гибельное искажение.</div>
+            <div class="intro-text-line" id="il-5">Сможешь ли ты выдержать бремя Печати?</div>
+            <div class="intro-text-line" id="il-6" style="font-size: 1.6rem; color:#ff4444; text-shadow: 0 0 30px rgba(255,0,0,0.8);">ЭХО ДРАКОНЬЕЙ КРОВИ</div>
+            <div class="intro-text-line" id="il-7">Кем в этом мире станешь ТЫ?</div>
+        </div>
+        <div id="intro-skip" onclick="skipIntro()">Пропустить</div>
+    </div>
+    <div id="image-modal" onclick="closeImage()">
+        <img id="modal-img" src="" alt="Avatar">
+    </div>
+    
+    <div id="app">
+        <!-- Loader -->
+        <div style="height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+            <div class="d20-wrapper loading" style="width: 80px; height: 80px;">
+                <svg viewBox="0 0 100 100" class="d20-svg">
+                    <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" />
+                    <polygon points="25,35 75,35 50,80" class="glass-face"/>
+                    <line x1="50" y1="5" x2="25" y2="35" /><line x1="50" y1="5" x2="75" y2="35" />
+                    <line x1="90" y1="25" x2="75" y2="35" /><line x1="90" y1="75" x2="75" y2="35" />
+                    <line x1="90" y1="75" x2="50" y2="80" /><line x1="50" y1="95" x2="50" y2="80" />
+                    <line x1="10" y1="75" x2="50" y2="80" /><line x1="10" y1="75" x2="25" y2="35" />
+                    <line x1="10" y1="25" x2="25" y2="35" />
+                </svg>
+            </div>
+            <h3 style="margin-top: 30px; animation: pulse-stress 2s infinite alternate;">Врата открываются...</h3>
+        </div>
+    </div>
+    
+    <!-- Dark Ambient Background Music -->
+    <audio id="bg-music" loop>
+        <source src="/static/music.mp3" type="audio/mpeg">
+    </audio>
+
+
+    <div id="dice-container" onclick="closeDice()">
+        <h3 class="dice-title">Бросок Судьбы</h3>
+        <div class="d20-wrapper" id="dice-element">
+            <div class="d20-spinner">
+                <svg viewBox="0 0 100 100" class="d20-svg">
+                    <!-- Октагон D20 -->
+                    <polygon points="50,5 90,25 90,75 50,95 10,75 10,25" />
+                    <!-- Центральный треугольник -->
+                    <polygon points="25,35 75,35 50,80" class="glass-face"/>
+                    <!-- Внутренние грани -->
+                    <line x1="50" y1="5" x2="25" y2="35" />
+                    <line x1="50" y1="5" x2="75" y2="35" />
+                    <line x1="90" y1="25" x2="75" y2="35" />
+                    <line x1="90" y1="75" x2="75" y2="35" />
+                    <line x1="90" y1="75" x2="50" y2="80" />
+                    <line x1="50" y1="95" x2="50" y2="80" />
+                    <line x1="10" y1="75" x2="50" y2="80" />
+                    <line x1="10" y1="75" x2="25" y2="35" />
+                    <line x1="10" y1="25" x2="25" y2="35" />
+                </svg>
+            </div>
+            <div class="d20-number" id="d20-number">20</div>
+        </div>
+        <div id="dice-result-text">Успех!</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready(); 
+        tg.expand();
+        tg.setHeaderColor('#050505');
+        tg.setBackgroundColor('#050505');
+        
+        let CURRENT_DATA = null;
+        let audioPlayed = false;
+        let introActive = false;
+        let introTimeoutIds = [];
+
+        function tryPlayAudio() {
+            if (!audioPlayed) {
+                const music = document.getElementById('bg-music');
+                if(music) {
+                    music.volume = 0.3;
+                    music.play().then(() => { audioPlayed = true; }).catch(e => console.log("Audio autoplay blocked:", e));
+                }
+            }
+        }
+
+        document.body.addEventListener('touchstart', () => { if(!introActive) tryPlayAudio(); }, {passive: true});
+        document.body.addEventListener('click', () => { if(!introActive) tryPlayAudio(); });
+
+        async function startIntro() {
+            tryPlayAudio();
+            document.getElementById('intro-btn').style.opacity = '0';
+            setTimeout(() => document.getElementById('intro-btn').style.display = 'none', 1000);
+            
+            setTimeout(() => document.getElementById('intro-skip').classList.add('show'), 3000); // Показываем кнопку пропуска через 3 сек
+
+            const lines = [1, 2, 3, 4, 5, 6, 7];
+            let currentDelay = 500; // Начальная задержка
+
+            for (let i = 0; i < lines.length; i++) {
+                const lineId = `il-${lines[i]}`;
+                const elem = document.getElementById(lineId);
+                const displayTime = lines[i] === 6 ? 4000 : 3500; // Название игры висит чуть дольше
+                
+                // Fade in
+                introTimeoutIds.push(setTimeout(() => {
+                    elem.classList.add('show');
+                }, currentDelay));
+                
+                // Fade out (кроме последней фразы "А кто ТЫ?")
+                if (i < lines.length - 1) {
+                    introTimeoutIds.push(setTimeout(() => {
+                        elem.classList.remove('show');
+                    }, currentDelay + displayTime));
+                    currentDelay += displayTime + 1500; // Пауза между фразами
+                } else {
+                    currentDelay += displayTime;
+                }
+            }
+
+            // Конец интро
+            introTimeoutIds.push(setTimeout(() => {
+                finishIntro();
+            }, currentDelay + 2000));
+        }
+
+        function skipIntro() {
+            introTimeoutIds.forEach(id => clearTimeout(id));
+            finishIntro();
+        }
+
+        function finishIntro() {
+            localStorage.setItem('introSeen_echo', 'true');
+            const introScreen = document.getElementById('intro-screen');
+            introScreen.style.opacity = '0';
+            setTimeout(() => {
+                introScreen.style.display = 'none';
+                introActive = false;
+                completeInit(); // Загружаем игру после интро
+            }, 2000);
+        }
+
+        async function init() {
+            const hasSeenIntro = localStorage.getItem('introSeen_echo');
+            
+            if (!hasSeenIntro) {
+                introActive = true;
+                document.getElementById('intro-screen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none'; // Скрываем апп, чтобы избежать мерцаний
+                // Не запускаем музыку пока не нажмут "Принять судьбу"
+                // Не делаем completeInit до конца интро
+            } else {
+                tryPlayAudio();
+                await completeInit();
+            }
+        }
+
+        async function completeInit() {
+            document.getElementById('app').style.display = 'block';
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = tg.initDataUnsafe?.user?.id || parseInt(urlParams.get('uid')) || 0;
+            const response = await fetch(`/api/user/${userId}`);
+            CURRENT_DATA = await response.json();
+            
+            const appDiv = document.getElementById('app');
+
+            if (CURRENT_DATA.role === 'admin') {
+                renderAdmin();
+            } else if (CURRENT_DATA.role === 'player') {
+                applyBodyEffects(CURRENT_DATA.character);
+                renderPlayer();
+            } else {
+                appDiv.innerHTML = `
+                    <div class="card" style="margin-top: 50px; text-align: center;">
+                        <h3 style="color: #ff6b6b; font-size: 1.5rem; margin-bottom: 10px;">Тень не узнает тебя</h3>
+                        <p style="color: #a0a0a0; font-size: 0.9rem;">Человек не найден в свитках судеб.</p>
+                    </div>`;
+            }
+        }
+
+        function applyBodyEffects(char) {
+            if (char.hp / char.max_hp <= 0.2) document.body.classList.add('critical-hp');
+            else document.body.classList.remove('critical-hp');
+            
+            if (char.stress >= 80) document.body.classList.add('high-stress');
+            else document.body.classList.remove('high-stress');
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-btn-' + tabId).classList.add('active');
+            document.getElementById('content-' + tabId).classList.add('active');
+            try { tg.HapticFeedback.selectionChanged(); } catch(e) {}
+        }
+
+        function renderPlayer() {
+            const char = CURRENT_DATA.character;
+            const hpP = Math.max(0, Math.min(100, (char.hp / char.max_hp) * 100));
+            const strP = Math.max(0, Math.min(100, (char.stress / 100) * 100));
+            
+            const avatarHtml = char.avatar_url 
+                ? `<img src="${char.avatar_url}" class="avatar" onclick="showImage('${char.avatar_url}')">` 
+                : `<div class="avatar" style="background: radial-gradient(#333, #111); display:flex; justify-content:center; align-items:center; font-family:'Cinzel'; font-size:2rem; color: #555;">?</div>`;
+            
+            let charStatus = char.status;
+            if(!charStatus) {
+                if(hpP <= 20) charStatus = "При смерти";
+                else if(strP >= 80) charStatus = "На грани безумия";
+                else charStatus = "Исследователь";
+            }
+
+            document.getElementById('app').innerHTML = `
+                <div class="card">
+                    <div class="header-flex">
+                        <div class="avatar-wrap">
+                            ${avatarHtml}
+                        </div>
+                        <div>
+                            <h2>${char.name}</h2>
+                            <small style="color:var(--accent-color); opacity: 0.8; font-style: italic;">${charStatus}</small>
+                        </div>
+                    </div>
+                    
+                    <span class="stat-label">Жизненная сила <span style="color:#ff6b6b">(${char.hp}/${char.max_hp})</span></span>
+                    <div class="stat-bar-container"><div class="stat-bar hp-bar" style="width:${hpP}%"></div></div>
+                    
+                    <span class="stat-label">Влияние тени (Стресс) <span style="color:#d0bfff">(${char.stress}%)</span></span>
+                    <div class="stat-bar-container"><div class="stat-bar stress-bar" style="width:${strP}%"></div></div>
+                </div>
+
+                <div class="tabs">
+                    <div class="tab active" id="tab-btn-quest" onclick="switchTab('quest')">Квест</div>
+                    <div class="tab" id="tab-btn-inv" onclick="switchTab('inv')">Инвентарь</div>
+                    <div class="tab" id="tab-btn-lore" onclick="switchTab('lore')">Гримуар</div>
+                </div>
+
+                <div class="card tab-content active" id="content-quest" style="min-height: 150px; text-align: center;">
+                    <h3 style="color: var(--accent-hover); font-family: 'Cinzel', serif; margin-bottom: 15px;">Акт ${CURRENT_DATA.world_state.current_act || 'I'}</h3>
+                    <p style="color: #ccc; margin-bottom: 20px; font-style: italic;">
+                        Локация: ${CURRENT_DATA.world_state.current_location || 'Неизвестно'}<br>
+                        Сцена: ${CURRENT_DATA.world_state.current_scene || '???'}
+                    </p>
+                    <div style="padding: 15px; background: rgba(157, 78, 221, 0.1); border-left: 3px solid var(--mystery); border-radius: 4px; text-align: left;">
+                        <span style="color: var(--neon-glow); font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;">Текущая цель:</span>
+                        <p style="margin-top: 10px; color: #fff; line-height: 1.5;">Слушай голос Якена и следуй за своей судьбой. История пишется твоими руками.</p>
+                    </div>
+                </div>
+
+                <div class="card tab-content" id="content-inv" style="min-height: 150px;">
+                    ${char.items.length > 0 ? char.items.map(i => `<span class="item-tag">${i}</span>`).join('') : '<p style="text-align:center; color:#666; font-style:italic; margin-top:20px;">Сумка пуста. Лишь ветер гуляет внутри.</p>'}
+                </div>
+
+                <div class="card tab-content" id="content-lore" style="min-height: 150px;">
+                    ${char.knowledge.length > 0 ? char.knowledge.map(k => `
+                        <div class="knowledge-block">
+                            <b style="color:var(--accent-hover); display:block; margin-bottom: 5px; font-family:'Cinzel', serif;">📜 ${k.title}</b>
+                            <span style="color:#ccc;">${k.content}</span>
+                        </div>
+                    `).join('') : '<p style="text-align:center; color:#666; font-style:italic; margin-top:20px;">Разум чист. Тайны еще скрыты во мраке.</p>'}
+                </div>
+                
+                <button class="btn-action" onclick="rollDiceUI()" style="margin-top:10px; font-size: 1rem; padding: 16px;">
+                    🎲 Бросить кости судьбы
+                </button>
+            `;
+        }
+
+        function showImage(src) {
+            const modal = document.getElementById('image-modal');
+            const img = document.getElementById('modal-img');
+            img.src = src;
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+            try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+
+        function closeImage() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 400); 
+        }
+
+        function renderAdmin() {
+            let ws = CURRENT_DATA.world_state;
+            
+            let html = `
+                <div style="text-align:center; margin-bottom: 30px;">
+                    <h2 style="font-size: 1.8rem; text-shadow: 0 0 20px var(--accent-color);">Око Многоликого</h2>
+                    <small style="color: #aaa; letter-spacing: 2px;">Панель Владыки</small>
+                </div>
+            `;
+            
+            html += `
+                <details class="card" open>
+                    <summary><h3>🌍 Нити Судьбы (Мир)</h3></summary>
+                    <div style="margin-top: 20px;">
+                        <span class="stat-label">Текущий акт</span>
+                        <select id="world_act">
+                            <option value="1" ${ws.current_act=='1'?'selected':''}>Акт I: Волантис</option>
+                            <option value="2" ${ws.current_act=='2'?'selected':''}>Акт II: Дорога Костей</option>
+                            <option value="3" ${ws.current_act=='3'?'selected':''}>Акт III: Мертвый Оазис</option>
+                            <option value="4" ${ws.current_act=='4'?'selected':''}>Акт IV: Пепельное Море</option>
+                            <option value="5" ${ws.current_act=='5'?'selected':''}>Акт V: Корабль Тайэрис</option>
+                        </select>
+                        <span class="stat-label">Сцена</span>
+                        <input type="text" id="world_scene" value="${ws.current_scene || ''}" placeholder="Сцена 1: Таверна Пьяный Кракен">
+                        <span class="stat-label">Текущие земли</span>
+                        <input type="text" id="world_loc" value="${ws.current_location || ''}">
+                        
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button class="btn-action" onclick="switchAct()" style="background: rgba(157,78,221,0.2); border-color: var(--mystery); flex: 1;">📢 Объявить Акт/Сцену</button>
+                        </div>
+                        
+                        <span class="stat-label">Тень сгущается (Угроза %)</span>
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <input type="range" id="world_threat_slider" min="0" max="100" value="${ws.threat_level || 0}" 
+                                style="flex:1; accent-color: var(--danger);" 
+                                oninput="document.getElementById('world_threat').value = this.value">
+                            <input type="number" id="world_threat" value="${ws.threat_level || 0}" style="width: 60px; text-align:center;"
+                                oninput="document.getElementById('world_threat_slider').value = this.value">
+                        </div>
+                        
+                        <span class="stat-label" style="color: #9d4edd">Очки Тьмы (Грязные решения группы)</span>
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <input type="number" id="world_dark" value="${ws.dark_points || 0}" style="width: 80px; text-align:center; border-color: #9d4edd;">
+                        </div>
+                        
+                        <button class="btn-action" onclick="updateWorld()" style="margin-top: 20px;">Ткать судьбу</button>
+                    </div>
+                </details>
+            `;
+
+            html += `
+                <details class="card" style="border: 1px solid var(--mystery-glow); box-shadow: inset 0 0 20px rgba(157,78,221,0.05);">
+                    <summary><h3 style="color: #d0bfff; text-shadow: 0 0 15px var(--mystery);">👁 Шепот Мрака</h3></summary>
+                    <div style="margin-top: 20px;">
+                        <span class="stat-label">Кому явится видение?</span>
+                        <select id="whisper_char" style="border-color: rgba(157,78,221,0.3);">
+                            ${CURRENT_DATA.characters.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                        </select>
+                        
+                        <span class="stat-label">Глас</span>
+                        <textarea id="whisper_text" rows="3" placeholder="Слова, что пронзят разум..."></textarea>
+                        
+                        <button class="btn-mystic" onclick="sendWhisper()">Наслать видение</button>
+                    </div>
+                </details>
+            `;
+
+            html += `<div class="admin-section-title"><h3 style="font-size:1.2rem;">🛡️ Герои Эссоса</h3></div>`;
+            
+            CURRENT_DATA.characters.forEach(c => {
+                const hpP = Math.max(0, Math.min(100, (c.hp / c.max_hp) * 100));
+                
+                html += `
+                    <details class="card" style="padding: 16px 20px;">
+                        <summary style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; margin-bottom: 10px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width: 10px; height: 10px; border-radius: 50%; background: ${hpP < 30 ? '#ff4444' : '#c9a227'}; box-shadow: 0 0 10px ${hpP < 30 ? '#ff4444' : '#c9a227'};"></div>
+                                <b style="color:var(--accent-hover); font-size: 1.1rem; letter-spacing: 1px;">${c.name}</b>
+                            </div>
+                            <small style="color:#777; font-family:'Inter'; font-weight:normal; letter-spacing:0">HP:${c.hp} | Str:${c.stress}</small>
+                        </summary>
+                        
+                        <div style="margin-top: 15px;">
+                            <div style="display:flex; gap:8px; margin-bottom: 10px;">
+                                <input type="text" id="name_${c.id}" value="${c.name}" placeholder="Истинное Имя">
+                                <button onclick="updateName('${c.id}')" style="width:50px; margin:6px 0; padding:12px; background:rgba(255,255,255,0.1)">💾</button>
+                            </div>
+
+                            <div style="display:flex; gap:8px; margin-bottom: 20px;">
+                                <input type="number" id="tgid_${c.id}" value="${c.tg_id}" placeholder="Telegram ID">
+                                <button onclick="updatePlayerId('${c.id}')" style="width:50px; margin:6px 0; padding:12px; background:rgba(255,255,255,0.1)">🔗</button>
+                            </div>
+                            
+                            <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(201,162,39,0.1);">
+                                <div style="display:flex; gap:15px">
+                                    <div style="flex:1">
+                                        <span class="stat-label" style="margin-top:0; color:#ff6b6b">Здоровье</span>
+                                        <input type="number" id="hp_${c.id}" value="${c.hp}" style="font-size:1.2rem; font-weight:bold; text-align:center;">
+                                    </div>
+                                    <div style="flex:1">
+                                        <span class="stat-label" style="margin-top:0; color:#d0bfff">Безумие</span>
+                                        <input type="number" id="stress_${c.id}" value="${c.stress}" style="font-size:1.2rem; font-weight:bold; text-align:center;">
+                                    </div>
+                                </div>
+                                <button onclick="updateStat('${c.id}')" style="margin-top:10px;">Изменить состояния</button>
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <span class="stat-label">Сумка</span>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="text" id="item_${c.id}" placeholder="Название предмета...">
+                                    <button onclick="addItem('${c.id}')" style="width:50px; margin:6px 0; padding:12px; background:rgba(201,162,39,0.1); color:var(--accent-color)">➕</button>
+                                </div>
+                                <div style="margin: 10px 0; min-height: 30px; padding: 10px; background:rgba(0,0,0,0.3); border-radius:8px;">
+                                    ${c.items.length > 0 ? c.items.map(i => `<span class="item-tag" onclick="removeItem('${c.id}', '${i}')" title="Нажми чтобы удалить">${i} <span style="margin-left:5px; color:#ff6b6b; font-size:12px;">✖</span></span>`).join('') : '<small style="color:#666">Пусто...</small>'}
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <span class="stat-label">Новая тайна</span>
+                                <input type="text" id="lore_title_${c.id}" placeholder="Заголовок">
+                                <textarea id="lore_txt_${c.id}" rows="2" placeholder="Суть тайны..."></textarea>
+                                <button onclick="addKnowledge('${c.id}')">Вписать в гримуар</button>
+                            </div>
+                        </div>
+                    </details>
+                `;
+            });
+
+            html += `<div class="admin-section-title"><h3 style="font-size:1.2rem;">⚙️ Законы Мироздания</h3></div>`;
+            
+            html += `
+                <details class="card">
+                    <summary><h3>📜 Архивы Памяти</h3></summary>
+                    <div style="margin-top: 15px; max-height: 200px; overflow-y: auto; padding-right: 5px; font-family: monospace; font-size: 0.85rem;">
+                        ${CURRENT_DATA.events.length > 0 
+                            ? CURRENT_DATA.events.map(e => `<div style="color: #aaa; margin-bottom: 8px; border-left: 2px solid #555; padding-left: 10px;">${e}</div>`).join('') 
+                            : '<p style="color:#666; font-style:italic">Страницы девственно чисты.</p>'}
+                    </div>
+                </details>
+
+                <details class="card">
+                    <summary><h3>🤖 Дух Механизма (ИИ)</h3></summary>
+                    <div style="margin-top: 15px;">
+                        <span class="stat-label">Модель Разума: <b style="color:var(--accent-hover)">${ws.gemini_model || 'gemini-2.5-flash'}</b></span>
+                        <input type="text" id="ai_model" value="${ws.gemini_model || 'gemini-2.5-flash'}">
+                        <button onclick="updateModel()">Обновить Разум</button>
+                    </div>
+                </details>
+                
+                <div class="card" style="border-color: rgba(217,4,41,0.3); background: rgba(50,5,5,0.4); box-shadow: 0 0 20px rgba(217,4,41,0.1);">
+                    <h3 style="color: #ff6b6b; text-shadow: 0 0 15px var(--danger);">🔥 Конец времен</h3>
+                    <p style="font-size: 0.85rem; color: #ffaaaa; margin: 15px 0;">Осторожно. Это уничтожит текущий виток судьбы, обнулит память, вещи и раны всех героев.</p>
+                    <button class="btn-danger" onclick="resetGame()">УНИЧТОЖИТЬ ЭТОТ МИР</button>
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        async function safeFetch(url, options, successMsg) {
+            try {
+                const res = await fetch(url, options);
+                let data = null;
+                if (res.headers.get("content-type")?.includes("application/json")) {
+                    data = await res.json();
+                }
+                
+                if (res.ok) {
+                    if(successMsg) try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+                    return { success: true, data };
+                } else {
+                    tg.showAlert(`Ошибка сервера: ${res.status}`);
+                    return { success: false, error: `Status ${res.status}` };
+                }
+            } catch (e) {
+                tg.showAlert("Паутина порвана. Ошибка связи с сервером.");
+                return { success: false, error: e };
+            }
+        }
+
+        async function updateName(charId) {
+            const newName = document.getElementById(`name_${charId}`).value;
+            const res = await safeFetch('/api/update_name', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, name: newName}) }, true);
+            if(res.success) {
+                tg.showAlert('Имя запечатлено в свитках.');
+                setTimeout(() => location.reload(), 1500);
+            }
+        }
+
+        async function updatePlayerId(charId) {
+            const tgid = document.getElementById(`tgid_${charId}`).value;
+            const res = await safeFetch('/api/update_player_id', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, tg_id: parseInt(tgid)}) }, true);
+            if(res.success) {
+                tg.showAlert('Связь души установлена!');
+            }
+        }
+
+        async function updateWorld() {
+            await Promise.all([
+                safeFetch('/api/update_world', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: 'current_act', value: document.getElementById('world_act').value}) }),
+                safeFetch('/api/update_world', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: 'current_scene', value: document.getElementById('world_scene').value}) }),
+                safeFetch('/api/update_world', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: 'current_location', value: document.getElementById('world_loc').value}) }),
+                safeFetch('/api/update_world', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: 'threat_level', value: document.getElementById('world_threat').value}) }),
+                safeFetch('/api/update_world', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: 'dark_points', value: document.getElementById('world_dark').value || '0'}) })
+            ]);
+            try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+            tg.showAlert('Ткань реальности изменена.');
+        }
+        
+        async function switchAct() {
+            const act = document.getElementById('world_act').value;
+            const scene = document.getElementById('world_scene').value;
+            const loc = document.getElementById('world_loc').value;
+            const res = await safeFetch('/api/start_act', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({act, scene, loc}) }, true);
+            if(res.success) {
+                tg.showAlert('Все услышали Зов.');
+            }
+        }
+
+        async function sendWhisper() {
+            const charId = document.getElementById('whisper_char').value;
+            const text = document.getElementById('whisper_text').value;
+            if(!text) return;
+            const res = await safeFetch('/api/whisper', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, text: text}) }, true);
+            if(res.success) {
+                document.getElementById('whisper_text').value = '';
+                tg.showAlert('Видение отправлено.');
+            }
+        }
+
+        async function updateStat(charId) {
+            const hp = document.getElementById(`hp_${charId}`).value;
+            const stress = document.getElementById(`stress_${charId}`).value;
+            const res = await safeFetch('/api/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, hp: parseInt(hp), stress: parseInt(stress)}) }, true);
+            if(res.success) try { tg.HapticFeedback.impactOccurred('medium'); } catch(e) {}
+        }
+
+        async function addItem(charId) {
+            const val = document.getElementById(`item_${charId}`).value;
+            if(!val) return;
+            const res = await safeFetch('/api/item', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, item_name: val, action: 'add'}) });
+            if(res.success) {
+                try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
+                location.reload();
+            }
+        }
+
+        async function removeItem(charId, itemName) {
+            tg.showConfirm(`Уничтожить предмет: ${itemName}?`, async (confirm) => {
+                if(confirm) {
+                    const res = await safeFetch('/api/item', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, item_name: itemName, action: 'remove'}) });
+                    if(res.success) location.reload();
+                }
+            });
+        }
+
+        async function addKnowledge(charId) {
+            const title = document.getElementById(`lore_title_${charId}`).value;
+            const txt = document.getElementById(`lore_txt_${charId}`).value;
+            if(!title || !txt) return;
+            const res = await safeFetch('/api/knowledge', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({char_id: charId, title: title, content: txt}) });
+            if(res.success) {
+                try { tg.HapticFeedback.impactOccurred('heavy'); } catch(e) {}
+                location.reload();
+            }
+        }
+
+        async function resetGame() {
+            tg.showConfirm('ЭТО НЕОБРАТИМО. Весь сюжет, память, вещи и статы будут уничтожены. Вы уверены, Владыка?', async (confirm) => {
+                if(confirm) {
+                    const res = await safeFetch('/api/reset_game', { method: 'POST' });
+                    if(res.success) {
+                        tg.showAlert('Реальность рассыпалась в прах и собралась вновь.');
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                }
+            });
+        }
+
+        async function updateModel() {
+            const modelName = document.getElementById('ai_model').value;
+            const res = await safeFetch('/api/update_model', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model: modelName}) }, true);
+            if(res.success) {
+                tg.showAlert('Разум обновлен.');
+                location.reload();
+            }
+        }
+
+        function rollDiceUI() {
+            const container = document.getElementById('dice-container');
+            const d20 = document.getElementById('dice-element');
+            const numLabel = document.getElementById('d20-number');
+            const resText = document.getElementById('dice-result-text');
+            
+            container.style.display = 'flex';
+            resText.classList.remove('show');
+            d20.classList.add('rolling');
+            numLabel.style.color = 'var(--text-color)';
+            
+            try { tg.HapticFeedback.impactOccurred('heavy'); } catch(e) {}
+
+            let spinInterval = setInterval(() => {
+                numLabel.innerText = Math.floor(Math.random() * 20) + 1;
+            }, 50);
+
+            setTimeout(() => {
+                clearInterval(spinInterval);
+                d20.classList.remove('rolling');
+                
+                const result = Math.floor(Math.random() * 20) + 1;
+                numLabel.innerText = result;
+                
+                // Специальная раскраска критов внутри кубика
+                numLabel.style.color = result === 20 ? '#50C878' : result === 1 ? '#ff4444' : 'var(--accent-hover)';
+                
+                resText.innerText = result === 20 ? '🔥 КРИТИЧЕСКИЙ УСПЕХ' : result === 1 ? '💀 РОКОВОЙ ПРОВАЛ' : `Судьба дарует: ${result}`;
+                resText.style.color = result === 20 ? '#50C878' : result === 1 ? '#ff4444' : 'var(--accent-hover)';
+                resText.style.textShadow = result === 20 ? '0 0 30px rgba(80,200,120,0.8)' : result === 1 ? '0 0 30px rgba(255,68,68,0.8)' : '0 0 20px var(--neon-glow)';
+                
+                resText.classList.add('show');
+                try { tg.HapticFeedback.notificationOccurred(result === 20 ? 'success' : result === 1 ? 'error' : result >= 10 ? 'success' : 'warning'); } catch(e) {}
+                
+                setTimeout(async () => {
+                    try { 
+                        if (CURRENT_DATA && CURRENT_DATA.character) {
+                            await fetch('/api/roll_dice', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ char_id: CURRENT_DATA.character.id, result: result })
+                            });
+                        }
+                    } catch(e) { console.log(e); }
+                    closeDice(); // Просто скрываем панель кубика, оставляя игрока внутри WebApp
+                }, 4000); 
+                
+            }, 1800); // 1.8 секунды на анимацию вращения
+        }
+
+        function closeDice() {
+            document.getElementById('dice-container').style.display = 'none';
+        }
+
+        init();
+    </script>
+</body>
+</html>
