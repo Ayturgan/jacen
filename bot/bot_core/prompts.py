@@ -438,6 +438,7 @@ def build_game_master_prompt(
 - Скрытая agenda сил/NPC: {director_notes.get('npc_agenda', '')}
 - Последствие, которое должно ощущаться: {director_notes.get('consequence_hint', '')}
 - Нужно ли дать выбор: {director_notes.get('offer_choices', False)}
+- Рекомендованный перевод камеры: {director_notes.get('camera_target', 'keep')}
 - Условие завершения сцены: {director_notes.get('exit_conditions', '')}
 - Режим хода: {director_notes.get('action_mode', 'auto-resolve')}
 """.strip()

@@ -228,6 +228,32 @@ def _resolve_character_id(target: str, all_chars: list[dict]) -> str | None:
     return None
 
 
+def _get_active_character_ids(all_chars: list[dict]) -> list[str]:
+    return [char["id"] for char in all_chars if char.get("tg_id") and char.get("tg_id") != 0]
+
+
+def _pick_next_spotlight_char(current_char_id: str, active_char_ids: list[str]) -> str | None:
+    if len(active_char_ids) <= 1:
+        return None
+
+    preferred_order = ["Elix", "Silas", "Varo", "Lysandra"]
+    ordered = [char_id for char_id in preferred_order if char_id in active_char_ids]
+    ordered.extend([char_id for char_id in active_char_ids if char_id not in ordered])
+
+    if not ordered:
+        return None
+
+    if current_char_id not in ordered:
+        return ordered[0]
+
+    current_index = ordered.index(current_char_id)
+    for offset in range(1, len(ordered) + 1):
+        candidate = ordered[(current_index + offset) % len(ordered)]
+        if candidate != current_char_id:
+            return candidate
+    return None
+
+
 async def _apply_stat_tags(text: str):
     stat_pattern = re.compile(r"\[ИЗМЕНИТЬ:\s*(\w+),\s*(\w+),\s*([+-]?\d+)\]", re.IGNORECASE)
     for stat_match in stat_pattern.finditer(text):
@@ -924,27 +950,52 @@ async def broadcast_scene_message(message_text: str, image_path: str | None = No
 
 async def maybe_rotate_spotlight(char_id: str, all_chars: list, chat_id: int, ai_camera):
     world_state = await database.get_all_world_states()
-    spotlight = world_state.get("active_spotlight", "ALL")
-    if ai_camera or spotlight == "ALL" or char_id == "Unknown":
+    if char_id == "Unknown":
+        return
+
+    last_actor = world_state.get("camera_last_actor", "")
+    try:
+        streak = int(world_state.get("camera_actor_streak", "0"))
+    except ValueError:
+        streak = 0
+
+    streak = (streak + 1) if last_actor == char_id else 1
+    await database.set_world_state("camera_last_actor", char_id)
+    await database.set_world_state("camera_actor_streak", str(streak))
+
+    if ai_camera:
+        await database.reset_spotlight_turns(char_id)
         return
 
     turns = await database.increment_spotlight_turns(char_id)
     max_turns = int(world_state.get("spotlight_max_turns", "3"))
     max_turns = max(1, min(max_turns, 6))
-    if turns < max_turns:
+    if max(turns, streak) < max_turns:
         return
 
     await database.reset_spotlight_turns(char_id)
-    active_chars = [char["id"] for char in all_chars if char["tg_id"] and char["tg_id"] != 0]
+    active_chars = _get_active_character_ids(all_chars)
     if len(active_chars) <= 1:
         return
 
-    await database.set_world_state("active_spotlight", "ALL")
+    next_char_id = _pick_next_spotlight_char(char_id, active_chars)
+    if not next_char_id:
+        return
+
+    await database.set_world_state("active_spotlight", next_char_id)
+    await database.reset_spotlight_turns(next_char_id)
+    await database.set_world_state("camera_last_actor", "")
+    await database.set_world_state("camera_actor_streak", "0")
+
+    next_char = next((char for char in all_chars if char["id"] == next_char_id), None)
+    next_name = next_char["name"] if next_char else next_char_id
+
     await safe_send(
         chat_id,
         (
-            "🎬 *Камера отходит в общий план...*\n\n"
-            "_Нити героев снова видны одновременно. Любой игрок может делать ход._"
+            "🎬 *Судьба переводит фокус...*\n\n"
+            f"_Чтобы внимание распределялось честно, следующий кадр за_ *{next_name}*.\n"
+            f"_{next_name}, Якен ждёт твой ход._"
         ),
     )
 
